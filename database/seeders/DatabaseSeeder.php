@@ -14,11 +14,26 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         DB::table('admin')->insert([
-            'nama' => 'Super Admin',
-            'email' => 'admin@laporaja.test',
-            'password' => Hash::make('password123'), // Ganti dengan password yang aman
+            'nama' => 'Admin',
+            'email' => 'admin@gmail.com',
+            'password' => Hash::make('password'),
             'created_at' => now(),
             'updated_at' => now(),
+        ]);
+
+        DB::table('warga')->insert([
+            'nama' => 'Nabil',
+            'email' => 'Nabil@gmail.com',
+            'no_hp' => '08123467890',
+            'alamat' => 'Jl.Tidar, Jember',
+            'password' => Hash::make('password'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->call([
+        KategoriSeeder::class,
+        StatusPengaduanSeeder::class,
         ]);
     }
 }

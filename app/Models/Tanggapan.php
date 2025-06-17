@@ -16,6 +16,7 @@ class Tanggapan extends Model
     protected $fillable = [
         'pengaduan_id',
         'admin_id',
+        'status_baru',
         'isi_tanggapan',
         'foto_tanggapan'
     ];
@@ -29,4 +30,6 @@ class Tanggapan extends Model
     {
         return $this->belongsTo(Admin::class, 'admin_id', 'admin_id');
     }
+
+
 }

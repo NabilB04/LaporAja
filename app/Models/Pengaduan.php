@@ -20,6 +20,8 @@ class Pengaduan extends Model
         'judul',
         'deskripsi',
         'lokasi',
+        'latitude',
+        'longitude',
         'foto_bukti'
     ];
 

@@ -12,10 +12,10 @@ return new class extends Migration
             $table->id('tanggapan_id');
             $table->unsignedBigInteger('pengaduan_id');
             $table->unsignedBigInteger('admin_id');
+            $table->string('status_baru');
             $table->text('isi_tanggapan');
             $table->string('foto_tanggapan')->nullable();
             $table->timestamp('created_at')->useCurrent();
-
             $table->foreign('pengaduan_id')->references('pengaduan_id')->on('pengaduan')->onDelete('cascade');
             $table->foreign('admin_id')->references('admin_id')->on('admin')->onDelete('cascade');
         });

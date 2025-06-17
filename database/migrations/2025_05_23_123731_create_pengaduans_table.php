@@ -17,6 +17,8 @@ return new class extends Migration
             $table->string('judul');
             $table->text('deskripsi');
             $table->string('lokasi');
+            $table->decimal('latitude', 10, 7)->nullable();
+            $table->decimal('longitude', 10, 7)->nullable();
             $table->string('foto_bukti')->nullable();
             $table->timestamps();
 

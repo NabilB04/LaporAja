@@ -2,18 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Kategori;
 use Illuminate\Http\Request;
 use App\Models\Pengaduan;
 use App\Models\Tanggapan;
 use App\Models\StatusPengaduan;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 
 class AdminController extends Controller
 {
     public function dashboard()
     {
-        $stats = [
+                $stats = [
             'total' => Pengaduan::count(),
             'baru' => Pengaduan::whereHas('status', function($q) {
                 $q->where('nama_status', 'baru');
@@ -32,40 +35,62 @@ class AdminController extends Controller
             ->get();
 
         return view('admin.dashboard', compact('stats', 'pengaduanTerbaru'));
+
+        $notifCount = 0;
+        if (Schema::hasTable('pengaduan')) {
+            $notifCount = Pengaduan::where('status', 'baru')->count();
+        }
+        return view('admin.dashboard', compact('notifCount'));
     }
 
-    public function indexPengaduan()
+    public function kelolaPengaduan(Request $request)
     {
-        $pengaduan = Pengaduan::with(['warga', 'kategori', 'status'])
-            ->latest()
-            ->paginate(10);
+        $query = Pengaduan::with(['warga', 'kategori']);
 
-        return view('admin.pengaduan.index', compact('pengaduan'));
+        if ($request->has('status') && $request->status != '') {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->has('kategori') && $request->kategori != '') {
+            $query->where('kategori_id', $request->kategori);
+        }
+
+        if ($request->has('search') && $request->search != '') {
+            $query->where(function($q) use ($request) {
+                $q->where('judul', 'like', '%' . $request->search . '%')
+                  ->orWhereHas('warga', function($userQuery) use ($request) {
+                      $userQuery->where('name', 'like', '%' . $request->search . '%');
+                  });
+            });
+        }
+
+        $pengaduans = $query->orderBy('created_at', 'desc')->paginate(10);
+        $kategoris = Kategori::all();
+
+        return view('admin.kelola-pengaduan', compact('pengaduans', 'kategoris'));
     }
 
-    public function showPengaduan($id)
+    public function detailPengaduan($id)
     {
-        $pengaduan = Pengaduan::with(['warga', 'kategori', 'status', 'tanggapan.admin'])
-            ->findOrFail($id);
-
-        $statusList = StatusPengaduan::all();
-
-        return view('admin.pengaduan.show', compact('pengaduan', 'statusList'));
+        $pengaduan = Pengaduan::with(['warga', 'kategori'])->findOrFail($id);
+        return view('admin.detail-pengaduan', compact('pengaduan'));
     }
 
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
-            'status_id' => 'required|exists:status_pengaduan,status_id'
+            'status' => 'required|in:baru,diproses,selesai,ditolak',
+            'catatan_admin' => 'nullable|string|max:500'
         ]);
 
         $pengaduan = Pengaduan::findOrFail($id);
         $pengaduan->update([
-            'status_id' => $request->status_id,
-            'admin_id' => Auth::guard('admin')->id()
+            'status' => $request->status,
+            'catatan_admin' => $request->catatan_admin,
+            'updated_at' => now()
         ]);
 
-        return back()->with('success', 'Status pengaduan berhasil diupdate!');
+        return redirect()->back()->with('success', 'Status pengaduan berhasil diperbarui!');
     }
 
     public function storeTanggapan(Request $request, $id)
@@ -90,7 +115,6 @@ class AdminController extends Controller
 
         Tanggapan::create($data);
 
-        // Update status to 'ditanggapi'
         $pengaduan = Pengaduan::findOrFail($id);
         $statusDitanggapi = StatusPengaduan::where('nama_status', 'ditanggapi')->first();
         if ($statusDitanggapi) {
@@ -99,4 +123,39 @@ class AdminController extends Controller
 
         return back()->with('success', 'Tanggapan berhasil ditambahkan!');
     }
+
+    public function profil()
+    {
+        $user = Auth::user();
+        return view('admin.profil', compact('user'));
+    }
+
+    public function editProfil()
+    {
+        $user = Auth::user();
+        return view('admin.edit-profil', compact('user'));
+    }
+
+    public function updateProfil(Request $request)
+    {
+     $admin = Auth::guard('admin')->user(); // Gunakan guard admin
+
+    $request->validate([
+        'nama' => 'required|string|max:255',
+        'password' => 'nullable|string|min:8|confirmed',
+    ]);
+
+    // Update nama
+    $admin->nama = $request->nama;
+
+    // Jika password diisi, maka update
+    if ($request->filled('password')) {
+        $admin->password = Hash::make($request->password);
+    }
+
+    $admin->save();
+
+    return redirect()->route('admin.profil')->with('success', 'Profil berhasil diperbarui.');
+    }
 }
+
